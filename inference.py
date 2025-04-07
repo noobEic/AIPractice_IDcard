@@ -26,7 +26,7 @@ if __name__ == "__main__":
     qa_data = pd.read_csv(qa_data)
     questions = qa_data["question"].tolist()
 
-    prompt = "以下是关于身份证办理的问题，请根据以下格式进行回答：\n\n问题：\n回答：\n参考文件：。你的答案不应包含多余的信息，包括你的思考过程。"
+    prompt = "以下是关于身份证办理的问题，请根据以下格式进行回答：问题：回答：参考文件：。你的答案不应包含多余的信息，包括你的思考过程。"
 
 
     results = []
@@ -40,7 +40,7 @@ if __name__ == "__main__":
                 model=model,
                 messages=[
                     {"role": "system", "content": "你是一个身份证办理的专家助手，回答问题时要准确、简洁。"},
-                    {"role": "user", "content": prompt + "\n问题：" + question}
+                    {"role": "user", "content": prompt + "问题：" + question}
                 ],
                 stream=False
             )
