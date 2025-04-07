@@ -3,8 +3,8 @@ from openai import OpenAI
 import argparse
 from tqdm import tqdm
 import pandas as pd
-BASE_URL = "http://505676.proxy.nscc-gz.cn:8888/v1/" 
-API_KEY = "sk-GaI4lht7mEdBN75i30FfAe11465e419795156aAc6d3eF7F0"
+BASE_URL = "your_base_url"
+API_KEY = "your_api_key"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     qa_data = pd.read_csv(qa_data)
     questions = qa_data["question"].tolist()
 
-    prompt = "以下是关于身份证办理的问题，请根据以下格式进行回答：\n\n问题：\n回答：\n参考文件："
+    prompt = "以下是关于身份证办理的问题，请根据以下格式进行回答：\n\n问题：\n回答：\n参考文件：。你的答案不应包含多余的信息，包括你的思考过程。"
 
 
 
@@ -39,6 +39,6 @@ if __name__ == "__main__":
                 ],
                 stream=False
             )
-            with open(f"{output_dir}/{i}.txt", "w") as f:
+            with open(f"{output_dir}/result_{args.setting}.txt", "w") as f:
                 f.write(response.choices[0].message.content)
         
