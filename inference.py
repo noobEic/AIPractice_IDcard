@@ -3,8 +3,13 @@ from openai import OpenAI
 import argparse
 from tqdm import tqdm
 import pandas as pd
-BASE_URL = "your_base_url"
-API_KEY = "your_api_key"
+from api import API_KEY, BASE_URL
+import csv
+def process_response(response):
+    tag_position = response.find('</think>')
+    if tag_position != -1:
+        return response[tag_position + len('</think>'):].strip()
+    return response
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
@@ -24,7 +29,7 @@ if __name__ == "__main__":
     prompt = "以下是关于身份证办理的问题，请根据以下格式进行回答：\n\n问题：\n回答：\n参考文件：。你的答案不应包含多余的信息，包括你的思考过程。"
 
 
-
+    results = []
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if args.setting == "zero_shot":
@@ -39,6 +44,13 @@ if __name__ == "__main__":
                 ],
                 stream=False
             )
-            with open(f"{output_dir}/result_{args.setting}.txt", "w") as f:
-                f.write(response.choices[0].message.content)
+            print(response.choices[0].message.content)
+            response = process_response(response.choices[0].message.content)
+            results.append((question, response))
+
+    with open(f"{output_dir}/result_{args.setting}.csv", "w") as f:
+        writer = csv.writer(f)
+        for item in results:
+            writer.writerow((item[0], item[1]))    
+                
         
