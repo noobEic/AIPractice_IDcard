@@ -1,8 +1,7 @@
 import os
 import argparse
 import pandas as pd
-import bleu
-import rouge
+import evaluate
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
@@ -18,7 +17,9 @@ if __name__ == "__main__":
     answers_gt = qa_data["answer"].tolist()
     answers_rs = result["answer"].tolist()
 
-    bleu_score = bleu.bleu(answers_gt, answers_rs)
-    rouge_score = rouge.rouge(answers_gt, answers_rs)
+    bleu = evaluate.load("bleu")
+    rouge = evaluate.load("rouge")
+    bleu_score = bleu.compute(predictions=answers_rs, references=answers_gt)
+    rouge_score = rouge.compute(predictions=answers_rs, references=answers_gt, rouge_types=["rougeL"])
     print(f"BLEU score: {bleu_score}")
     print(f"ROUGE score: {rouge_score}")
