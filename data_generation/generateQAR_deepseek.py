@@ -1,9 +1,30 @@
 import os
 import argparse
 from openai import OpenAI
+import sys
+sys.path.append('../')
+from api import BASE_URL,API_KEY
+num_questions = 10
+prompt = "您的任务是根据给定的上下文提出{10个问题，并给出每个问题的答案。 \
+在每个问题的末尾加上\"?\" \
+提供的上下文写出该问题的答案。 \
+每个问题/答案之间用 \"XXX \"隔开。\
+每个问题必须以 \"question: \"开头。\
+每个答案必须以 \"answer: \"开头。\
+问题必须符合以下规则： \
+1.即使在没有给定上下文的情况下，问题也应该对人类有意义。\
+2.问题应能根据给定的上下文给出完整的答案。\
+3.问题应从包含重要信息的上下文中提取。也可以是表格、代码等。\
+4.问题答案不应包含任何链接。\
+5.问题难度应适中。\
+6.问题必须合理，必须为人类所理解和回答。 \
+7.不要在问题中使用 \"提供上下文 \"等短语。 \
+8.避免在问题中使用 \"和 \"字，因为它可以分解成多个问题。\
+9.问题不应超过 10 个单词，尽可能使用缩写。\
+  context: {context}   \
+    "
 
-API_KEY = os.environ['OPENAI_API_KEY']
-BASE_URL = os.environ['OPENAI_API_URL']
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -23,8 +44,8 @@ if __name__ == '__main__':
         if file.endswith('.txt'):
             with open(os.path.join(reference_dir, file), 'r') as f:
                 text = f.read()
-                prompt = "Please generate a question and answer pair for the following text:\n\n" + text + "\n\n"
-                response = client.Completion.create(engine="davinci-instruct-beta", prompt=prompt, max_tokens=100, stop=["\n"])
+                text = prompt + text
+                response = client.completions.create(model="deepseek-r1", prompt=text, max_tokens=1000, stop=["\n"])
                 question = response.choices[0].text.strip()
                 answer = text.strip()
                 with open(os.path.join(output_dir, file.replace('.txt', '.txt')), 'w') as f:
