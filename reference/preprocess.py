@@ -88,11 +88,11 @@ if __name__ == "__main__":
         print(f"分块 {i+1}:")
         print(f"元数据: {chunk['metadata']}")
         print(f"内容: {chunk['content'][:200]}...\n")
-
+    i = 0
     for chunk in chunks:
         print(chunk['content'])
-        save_path = f"./chunks/{chunk['metadata']['source']}.txt"
+        save_path = f"./chunks/{chunk['metadata']['source']}_{i}.txt"
         with open(save_path, 'a', encoding='utf-8') as f:
             f.write(chunk['content'])
             print(f"分块内容已保存至 {save_path}")
-        
+        i+= 1
