@@ -79,7 +79,7 @@ def split_markdown_by_headers(md_text: str) -> List[Dict]:
     ]
 
 if __name__ == "__main__":
-    doc_path = "关于传发广东省户口居民身份证管理工作操作规范（2024年版）的通知【正文】4433808.doc"  # 替换为实际文件路径
+    doc_path = "关于传发广东省户口居民身份证管理工作操作规范（2024年版）的通知【正文】4433808.doc"
     chunks = process_legal_doc(doc_path)
     
     # 打印前 3 个分块
