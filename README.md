@@ -1,6 +1,6 @@
 # 人工智能实践——大模型身份证问答
 
-![IDcard.drawio](.\IDcard.drawio.png)
+![IDcard.drawio](./IDcard.drawio.png)
 
 ## 任务背景
 
