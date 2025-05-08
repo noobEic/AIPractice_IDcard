@@ -1,5 +1,5 @@
-from langchain_community.vectorstores import FAISS  # 或其他向量库
-from langchain_huggingface import HuggingFaceEmbeddings  # 或OpenAI/Cohere等
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
 import os
 from typing import List
