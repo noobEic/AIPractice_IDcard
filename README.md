@@ -61,5 +61,6 @@
 
 [^1]: Lewis P, Perez E, Piktus A, et al. Retrieval-augmented generation for  knowledge-intensive nlp tasks[J]. Advances in neural information  processing systems, 2020, 33: 9459-9474.
 
+[^2]: De Lima R T, Gupta S, Ramis C B, et al. Know Your RAG: Dataset Taxonomy and Generation Strategies for Evaluating RAG Systems[C]//Proceedings of the 31st International Conference on Computational Linguistics: Industry Track. 
 
 
