@@ -38,7 +38,7 @@ simpleqa_prompt_template = FewShotPromptTemplate(
     example_prompt=OPENAI_TEMPLATE,
 )
 
-fackcheck_prompt_template = FewShotPromptTemplate(
+factcheck_prompt_template = FewShotPromptTemplate(
     prefix=SYNTHETIC_FEW_SHOT_PREFIX,
     examples=factcheck_examples,
     suffix=SYNTHETIC_FEW_SHOT_SUFFIX,
@@ -68,7 +68,7 @@ fackcheck_synthetic_data_generator = create_openai_data_generator(
     llm=ChatOpenAI(
         temperature=1
     ), #TODO: llm_config
-    prompt=fackcheck_prompt_template,
+    prompt=factcheck_prompt_template,
 )
 
 complexqa_synthetic_data_generator = create_openai_data_generator(
