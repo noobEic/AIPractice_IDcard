@@ -24,15 +24,10 @@ class ComplexQA(BaseModel):
     answer: str
     reference: list[str]
 
-simpleqa_examples = [
+simpleqa_examples = []
+factcheck_examples = []
+complexqa_examples = []
 
-]
-fackcheck_examples = [
-    
-]
-complexqa_examples = [
-    
-]
 OPENAI_TEMPLATE = PromptTemplate(input_variables=["example"], template="{example}")
  
 simpleqa_prompt_template = FewShotPromptTemplate(
@@ -45,7 +40,7 @@ simpleqa_prompt_template = FewShotPromptTemplate(
 
 fackcheck_prompt_template = FewShotPromptTemplate(
     prefix=SYNTHETIC_FEW_SHOT_PREFIX,
-    examples=fackcheck_examples,
+    examples=factcheck_examples,
     suffix=SYNTHETIC_FEW_SHOT_SUFFIX,
     input_variables=["sentence", "label"],
     example_prompt=OPENAI_TEMPLATE,
@@ -90,3 +85,5 @@ synthetic_results = simpleqa_synthetic_data_generator.generate(
     extra="the question and answer are related to the document",
     runs=1000,
 )
+
+print(synthetic_results)
