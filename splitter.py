@@ -9,7 +9,6 @@ from typing import Any, Iterable, List
 
 class LawSplitter(RecursiveCharacterTextSplitter):
     def __init__(self, **kwargs: Any):
-        # 定义中文法律文档层级分隔符（按优先级排序）
         separators = [
             # 一级标题：一、二、...
             r'\n[一二三四五六七八九十]+、\s*',
@@ -26,17 +25,15 @@ class LawSplitter(RecursiveCharacterTextSplitter):
             # 五级标题：① ② ...
             #r'\n[①②③④⑤⑥⑦⑧⑨⑩]+\s*',
             
-
         ]
         
         super().__init__(
             separators=separators,
             is_separator_regex=True,
-            keep_separator=True,  # 保留标题标记
+            keep_separator=True,
             **kwargs
         )
         
-        # 标题级别映射
         self.level_mapping = {
             r'^[一二三四五六七八九十]+、': 'level1',
             r'^（[一二三四五六七八九十]+）': 'level2',
@@ -101,7 +98,6 @@ class LawSplitter(RecursiveCharacterTextSplitter):
     
     
 if __name__ == "__main__":
-    # Test the LawSplitter
     loader = UnstructuredWordDocumentLoader("reference/关于传发广东省户口居民身份证管理工作操作规范（2024年版）的通知【正文】4433808.doc")
     documents = loader.load()
     splitter = LawSplitter()

@@ -28,7 +28,7 @@
      {
      	"question": "临时居民身份证的有效期是多久？",
      	"answer": "临时居民身份证的有效期为三个月。",
-        "reference": "临时居民身份证的有效期限为三个月，有效期限自签发之日起计算。"
+         "reference": "临时居民身份证的有效期限为三个月，有效期限自签发之日起计算。"
      }
      ```
 
@@ -54,59 +54,38 @@
 
 3. 利用合成数据进一步对模型进行微调，或直接使用已有模型进行推理。
 
+   本项目采取两种方式增强大模型在身份证办理这一特定场景的问答能力：
+
+   - SFT（Supervised Fine-Tuning）：将生成的数据集划分为训练集、验证集和测试集，进行监督微调。
+   - RAG（Retrieval-Augmented Generation）：固定模型参数，将第1步中构建的向量数据库作为模型的外部数据库，在推理时检索向量数据库中对应文本，以增强输出质量。
+
+   另外，为了评估两种方式带来的具体提升，本项目添加了Baseline模型用于对比，设置如下：
+
+   - Few-shot：每种任务取3个样本QA对，用于提示模型回答。
+   - Zero-shot：直接将测试集所有问题交给模型回答，没有任何领域知识引入。
+
 4. 使用多个指标评估模型回复质量，并根据实验结果进一步优化上一步中所使用的模型，以达到预期效果。
 
    - NLP通用指标
    - RAG系统评估指标
 
-   
+5. 搭建Web端交互界面，调用模型进行问答，模拟真实场景落地应用。
 
-## 向量数据库构建
-
-### 文档预处理
-
-### RAG构建
-
-### 生成数据集
-
-
-
-
-
-
-
-## 方案1——RAG
-
-### 原理解释
-
-### 实验设置
-
-
-
-## 方案2——SFT
-
-### 原理解释
-
-### 实验设置
-
-
-
-## 效果评估
-
-### 
+   - 前端框架：Vue3
+   - 后端api构建：Fastapi
 
 ## 参考资料
 
 ### Repositories
 
-
+[^1]: Faiss https://github.com/facebookresearch/faiss.
 
 ### Publications
 
-[^1]: Lewis P, Perez E, Piktus A, et al. Retrieval-augmented generation for  knowledge-intensive nlp tasks[J]. Advances in neural information  processing systems, 2020, 33: 9459-9474.
+[^2]: Lewis P, Perez E, Piktus A, et al. Retrieval-augmented generation for  knowledge-intensive nlp tasks[J]. Advances in neural information  processing systems, 2020, 33: 9459-9474.
 
-[^2]: De Lima R T, Gupta S, Ramis C B, et al. Know Your RAG: Dataset Taxonomy and Generation Strategies for Evaluating RAG Systems[C]//Proceedings of the 31st International Conference on Computational Linguistics: Industry Track. 
+[^3]: De Lima R T, Gupta S, Ramis C B, et al. Know Your RAG: Dataset Taxonomy and Generation Strategies for Evaluating RAG Systems[C]//Proceedings of the 31st International Conference on Computational Linguistics: Industry Track. 
 
-[^3]: Es S, James J, Anke L E, et al. Ragas: Automated evaluation of retrieval augmented generation[C]//Proceedings of the 18th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations. 2024: 150-158.
+[^4]: Es S, James J, Anke L E, et al. Ragas: Automated evaluation of retrieval augmented generation[C]//Proceedings of the 18th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations. 2024: 150-158.
 
-[^4]: Roychowdhury S, Soman S, Ranjani H G, et al. Evaluation of RAG Metrics  for Question Answering in the Telecom Domain[J]. CoRR, 2024.
+[^5]: Roychowdhury S, Soman S, Ranjani H G, et al. Evaluation of RAG Metrics  for Question Answering in the Telecom Domain[J]. CoRR, 2024.
