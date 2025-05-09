@@ -16,8 +16,9 @@ class SimpleQA(BaseModel):
     reference: str
     
 class FactCheck(BaseModel):
-    sentence: str
+    statement: str
     label: bool
+    reference: str
     
 class ComplexQA(BaseModel):
     question: str
