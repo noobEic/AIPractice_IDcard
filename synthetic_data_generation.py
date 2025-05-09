@@ -43,7 +43,7 @@ factcheck_prompt_template = FewShotPromptTemplate(
     prefix=SYNTHETIC_FEW_SHOT_PREFIX,
     examples=factcheck_examples,
     suffix=SYNTHETIC_FEW_SHOT_SUFFIX,
-    input_variables=["sentence", "label"],
+    input_variables=["statement", "label", "reference"],
     example_prompt=OPENAI_TEMPLATE,
 )
 
