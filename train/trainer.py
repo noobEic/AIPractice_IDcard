@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-from transformers import AutoTokenizer, AutoModelForCausalLM, AdamW
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 import csv
 import os
@@ -83,7 +83,7 @@ class IDCardTrainer:
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name_or_path)
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name_or_path).to(self.device)
-        self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
         self.train_dataset = IDCardDataset(self.data_path, self.tokenizer, self.max_length)
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
         set_seed(self.seed)
@@ -101,7 +101,8 @@ class IDCardTrainer:
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-            self.save_model(epoch)
+            if (epoch+1) % 10 == 0:
+                self.save_model(epoch)
 
     def save_model(self, epoch):
         output_dir = os.path.join(self.output_dir, f"epoch_{epoch+1}")

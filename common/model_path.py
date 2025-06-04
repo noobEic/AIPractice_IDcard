@@ -1,5 +1,5 @@
 MODEL_PATHs = {
-    "Qwen-3B": "/home/zxyu/private_data/pretrain/Qwen-3B", 
+    "Qwen-3B": "/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct", 
     "Qwen-7B": "/home/zxyu/private_data/pretrain/Qwen-7B",
     "Qwen-14B": "/home/zxyu/private_data/pretrain/Qwen-14B",
     "Qwen-32B": "/home/zxyu/private_data/pretrain/Qwen-32B",
