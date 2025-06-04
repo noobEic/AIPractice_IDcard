@@ -5,7 +5,7 @@ import evaluate
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument("--qa_data", type=str,default="id_card_qa.csv")
+    parser.add_argument("--qa_data", type=str,default="synthetic_data_generation_ragas_2.csv")
     parser.add_argument("--result", type=str, default="results/result_zero_shot.csv")
 
     args = parser.parse_args()
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     qa_data = pd.read_csv(qa_data)
     result = pd.read_csv(result)
     
-    answers_gt = qa_data["answer"].tolist()
+    answers_gt = qa_data["reference"].tolist()
     answers_rs = result["answer"].tolist()
 
     bleu = evaluate.load("bleu")
