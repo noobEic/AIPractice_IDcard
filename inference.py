@@ -13,7 +13,7 @@ def process_response(response):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument("--qa_data", type=str,default="id_card_qa.csv")
+    parser.add_argument("--qa_data", type=str,default="synthetic_data_generation_ragas_2.csv")
     parser.add_argument("--model", type=str, default="deepseek-r1")
     parser.add_argument("--output_dir", type=str, default="results")
     parser.add_argument("--setting", type=str, default="zero_shot")
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     output_dir = args.output_dir
 
     qa_data = pd.read_csv(qa_data)
-    questions = qa_data["question"].tolist()
+    questions = qa_data["user_input"].tolist()
 
     prompt = "以下是关于身份证办理的问题，请用一段话回答，不要分段或换行。你的答案不应包含多余的信息，包括你的思考过程。"
 
@@ -48,6 +48,9 @@ if __name__ == "__main__":
             response = process_response(response.choices[0].message.content)
             results.append((question, response))
 
+    
+    
+    
     with open(f"{output_dir}/result_{args.setting}.csv", "w") as f:
         writer = csv.writer(f)
         for item in results:
