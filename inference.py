@@ -48,6 +48,10 @@ if __name__ == "__main__":
             response = process_response(response.choices[0].message.content)
             results.append((question, response))
 
+    if args.setting == "SFT":
+        pass
+    
+
     
     
     
