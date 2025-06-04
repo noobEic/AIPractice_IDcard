@@ -38,7 +38,7 @@ personas = [
     ),
     Persona(
         name="政策核实者",
-        role_description="对已获取的身份证办理政策信息进行真实性核对的谨慎市民",
+        role_description="对已获取的身份证办理政策信息进行真实性核对的市民",
     )
 ]
 
