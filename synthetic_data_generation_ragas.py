@@ -12,15 +12,15 @@ from api import BASE_URL, API_KEY, OPENAI_API_KEY,OPENAI_BASE_URL
 
 from langchain_community.document_loaders import UnstructuredWordDocumentLoader
 from splitter import LawSplitter
-# loader = UnstructuredWordDocumentLoader("reference/关于传发广东省户口居民身份证管理工作操作规范（2024年版）的通知【正文】4433808.doc")
-# documents = loader.load()
-# splitter = LawSplitter()
-# docs = splitter.split_documents(documents)
-# print(docs.__len__())
+loader = UnstructuredWordDocumentLoader("reference/关于传发广东省户口居民身份证管理工作操作规范（2024年版）的通知【正文】4433808.doc")
+documents = loader.load()
+splitter = LawSplitter()
+docs = splitter.split_documents(documents)
+print(docs.__len__())
 
-path = "./reference/"
-loader = DirectoryLoader(path, glob="**/*.doc")
-docs = loader.load()
+# path = "./reference/"
+# loader = DirectoryLoader(path, glob="**/*.doc")
+# docs = loader.load()
 
 generator_llm = LangchainLLMWrapper(ChatOpenAI(model="deepseek-r1",base_url=BASE_URL,api_key=API_KEY))
 generator_embeddings = LangchainEmbeddingsWrapper(OllamaEmbeddings(
