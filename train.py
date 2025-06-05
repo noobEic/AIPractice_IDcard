@@ -21,6 +21,9 @@ if __name__ == '__main__':
         lora_alpha=16,
         lora_dropout=0.1,
         fp16=True,
+        accumulation_steps=4,
+        save_steps=100,
+        save_full_model=False
     )
     
     dataset = IDCardDataset(train_config.data_path, train_config.tokenizer_name_or_path, train_config.max_length)

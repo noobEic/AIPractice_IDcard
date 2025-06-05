@@ -24,6 +24,9 @@ class IDCardConfig:
     lora_r: float
     lora_alpha: float
     lora_dropout: float
+    accumulation_steps: int
+    save_steps: int
+    save_full_model: bool
     
 
 
@@ -56,9 +59,12 @@ class IDCardDataset(Dataset):
         question = item['question']
         answer = item['answer']
         
+        
+        prompt = f"问题：{question} 答案："
+        text = prompt + answer
+    
         encoding = self.tokenizer(
-            question,
-            question + answer,
+            text,
             max_length=self.max_length,
             padding='max_length',
             truncation=True,
@@ -66,8 +72,18 @@ class IDCardDataset(Dataset):
         )
         
         labels = encoding['input_ids'].clone()
-        answer_start_idx = len(self.tokenizer(question, return_tensors='pt')['input_ids'][0])
-        labels[:, :answer_start_idx] = -100
+    
+        prompt_tokens = self.tokenizer(
+            prompt,
+            max_length=self.max_length,
+            truncation=True,
+            return_tensors='pt'
+        )
+        prompt_length = prompt_tokens['input_ids'].shape[1]
+        
+        labels[:, :prompt_length] = -100
+
+        labels[labels == self.tokenizer.pad_token_id] = -100
         
         return {
             'input_ids': encoding['input_ids'].flatten(),
@@ -83,9 +99,15 @@ class IDCardTrainer:
         self.tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name_or_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         
+        kwargs = {
+            "max_memory": {i: "24GiB" for i in range(4)},
+            "device_map": "auto",
+        }
+        
         base_model = AutoModelForCausalLM.from_pretrained(
             config.model_name_or_path,
             torch_dtype=torch.bfloat16 if config.fp16 else torch.float32
+            **kwargs
         )
 
         peft_config = LoraConfig(
@@ -126,15 +148,22 @@ class IDCardTrainer:
         self.model.train()
         
         global_step = 0
+
+        accumulation_steps = self.config.gradient_accumulation_steps if hasattr(self.config, 'gradient_accumulation_steps') else 1
+        
         for epoch in range(self.config.num_train_epochs):
             print(f"Epoch {epoch+1}/{self.config.num_train_epochs}")
             
             epoch_loss = 0
-            for step, batch in enumerate(tqdm(self.train_dataloader)):
 
+            progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}")
+            
+            for step, batch in enumerate(progress_bar):
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
+                
+                self.model.train()
                 
                 with torch.amp.autocast(enabled=self.config.fp16,device_type=self.device):
                     outputs = self.model(
@@ -143,26 +172,35 @@ class IDCardTrainer:
                         labels=labels
                     )
                     loss = outputs.loss
-
+                if not loss.requires_grad:
+                    # 如果不需要梯度，打印警告并跳过
+                    print(f"Warning: Loss does not require grad at step {global_step}")
+                    continue
+                
+                
+                loss = loss / accumulation_steps
                 self.scaler.scale(loss).backward()
 
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.optimizer.zero_grad()
+                if (step + 1) % accumulation_steps == 0 or (step + 1) == len(self.train_dataloader):
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    self.optimizer.zero_grad()
+                    
+                    self.lr_scheduler.step()
                 
-                self.lr_scheduler.step()
-                
-                epoch_loss += loss.item()
+                epoch_loss += loss.item() * accumulation_steps
                 global_step += 1
-                
-                if global_step % 100 == 0:
-                    print(f"Step {global_step}, Loss: {loss.item():.4f}, LR: {self.lr_scheduler.get_last_lr()[0]:.8f}")
-            
+
+                progress_bar.set_postfix({
+                    'loss': f"{loss.item() * accumulation_steps:.4f}", 
+                    'lr': f"{self.lr_scheduler.get_last_lr()[0]:.8f}"
+                })
+
+
             avg_loss = epoch_loss / len(self.train_dataloader)
             print(f"Epoch {epoch+1} Average Loss: {avg_loss:.4f}")
-
-            if (epoch + 1) % self.config.save_steps == 0:
-                self.save_model(epoch)
+            if (epoch+1) % 10 == 0:
+                self.save_model(f"epoch-{epoch+1}")
     
     def save_model(self, epoch):
         output_dir = os.path.join(self.config.output_dir, f"checkpoint-{epoch+1}")
