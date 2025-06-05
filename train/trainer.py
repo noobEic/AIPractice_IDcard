@@ -200,10 +200,10 @@ class IDCardTrainer:
             avg_loss = epoch_loss / len(self.train_dataloader)
             print(f"Epoch {epoch+1} Average Loss: {avg_loss:.4f}")
             if (epoch+1) % 10 == 0:
-                self.save_model(f"epoch-{epoch+1}")
+                self.save_model(epoch)
     
     def save_model(self, epoch):
-        output_dir = os.path.join(self.config.output_dir, f"checkpoint-{epoch+1}")
+        output_dir = os.path.join(self.config.output_dir, f"checkpoint_{epoch+1}")
         os.makedirs(output_dir, exist_ok=True)
 
         self.model.save_pretrained(output_dir)
