@@ -3,7 +3,7 @@ from common.utils import set_seed
 import torch
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 if __name__ == '__main__':
     train_config = IDCardConfig(

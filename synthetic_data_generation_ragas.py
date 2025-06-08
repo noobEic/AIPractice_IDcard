@@ -49,5 +49,5 @@ dataset = generator.generate_with_langchain_docs(docs, testset_size=2000)
 
 
 
-dataset.to_csv("synthetic_data_generation_ragas_2.csv")
+dataset.to_csv("synthetic_data_generation_ragas_3.csv")
 print("Synthetic data generation completed and saved to 'synthetic_data_generation_ragas_2.csv'.")
