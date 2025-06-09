@@ -15,7 +15,7 @@ def process_response(response):
     return response
 
 def sft_generate_answer(model, tokenizer, question, max_length=500, temperature=0.7):
-    prompt = f"<|im_start|>user\n{question}<|im_end|>\n<|im_start|>assistant\n"
+    prompt = f"你是一个身份证办理的专家助手，请用简洁的话语回答以下问题，不要分段或换行。你的答案不应包含多余的信息，包括你的思考过程。\n\n问题：{question}"
 
     inputs = tokenizer(
         prompt,
@@ -115,7 +115,6 @@ if __name__ == "__main__":
             model = model.merge_and_unload()
         
         model.eval()
-        print(f"模型加载完成，设备: {model.device}")
 
         for question in tqdm(questions, desc="SFT"):
             with torch.no_grad():

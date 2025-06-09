@@ -48,9 +48,6 @@ def evaluate_qa(qa_data_path, result_path):
         rouge_scores = rouge.compute(predictions=predictions, references=references)
         
         # 4. 计算问答专用指标
-        # 4.1 完全匹配率
-        exact_matches = [1 if pred.strip() == ref.strip() else 0 for pred, ref in zip(predictions, references)]
-        exact_match_rate = sum(exact_matches) / len(exact_matches)
         
         # 4.2 BERTScore - 语义相似度
         P, R, F1 = bert_score(predictions, references, lang="zh")
@@ -62,14 +59,12 @@ def evaluate_qa(qa_data_path, result_path):
         
         # 5. 返回综合结果
         return {
-            "exact_match": exact_match_rate,
             "bert_score_f1": float(bert_score_f1),
             "semantic_similarity": float(avg_semantic_sim),
             "bleu": bleu_scores["bleu"],
             "rougeL": rouge_scores["rougeL"],
             "details": {
                 "semantic_similarities": semantic_similarities.tolist(),
-                "exact_matches": exact_matches
             }
         }
     
@@ -197,14 +192,14 @@ def save_detailed_report(eval_results, error_details, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="评估问答系统性能")
     parser.add_argument("--qa_data", type=str, default="synthetic_data_generation_ragas_2.csv")
-    parser.add_argument("--result", type=str, default="results/result_zero_shot.csv")
+    parser.add_argument("--result", type=str, default="results/result_SFT.csv")
     parser.add_argument("--output_report", type=str, default="evaluation_report.html")
     
     args = parser.parse_args()
     
     # 执行评估
     qa_data = pd.read_csv(args.qa_data)
-    result_data = pd.read_csv(args.result)
+    result_data = pd.read_csv(args.result,header=None, names=["question","answer"])
     
     evaluation_results = evaluate_qa(args.qa_data, args.result)
     
