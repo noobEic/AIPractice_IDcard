@@ -54,11 +54,11 @@ class LawSplitter(RecursiveCharacterTextSplitter):
         
         processed = []
         for chunk in chunks:
-            if len(chunk) > self.chunk_size * 1.5:
+            if len(chunk) > self._chunk_size * 1.5:
                 sentences = re.split(r'(?<=[。！？；])', chunk)
                 current_block = ""
                 for sentence in sentences:
-                    if len(current_block) + len(sentence) > self.chunk_size:
+                    if len(current_block) + len(sentence) > self._chunk_size:
                         if current_block:
                             processed.append(current_block.strip())
                             current_block = sentence
@@ -80,19 +80,16 @@ class LawSplitter(RecursiveCharacterTextSplitter):
         for doc in documents:
             chunks = self.split_text(doc.page_content)
             for chunk in chunks:
-                # 跳过空块或过小的块
                 if not chunk.strip() or len(chunk.strip()) < 10:
                     continue
                     
                 texts.append(chunk)
                 new_metadata = doc.metadata.copy()
                 
-                # 检测并添加层级信息
                 level = self._detect_level(chunk)
                 if level:
                     new_metadata["level"] = level
-                    
-                    # 提取标题（第一行）
+
                     title_line = chunk.split('\n')[0].strip()
                     new_metadata["title"] = title_line
                 
@@ -114,6 +111,4 @@ if __name__ == "__main__":
     splitter = LawSplitter()
     split_docs = splitter.split_documents(documents)
     print(split_docs.__len__())
-    for doc in split_docs:
-        print(doc.metadata)
-        print(doc.page_content.__len__())
+    
