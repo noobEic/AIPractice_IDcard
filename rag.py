@@ -1,9 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_huggingface import HuggingFaceEmbeddings
-from sentence_transformers import SentenceTransformer
-import faiss
 import argparse
-import pickle
 import os
 from langchain_community.vectorstores import FAISS
 
