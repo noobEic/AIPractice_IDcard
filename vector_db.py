@@ -20,7 +20,9 @@ def process_and_store(docs: List[Document],
         documents=docs,
         embedding=embeddings
     )
-
+    print(f"索引中文档数量: {vector_db.index.ntotal}")
+    print(f"文档存储中文档数量: {len(vector_db.docstore._dict)}")
+    
     os.makedirs(persist_dir, exist_ok=True)
     vector_db.save_local(persist_dir)
 

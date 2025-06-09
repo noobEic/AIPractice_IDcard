@@ -7,68 +7,70 @@ from langchain.docstore.document import Document
 from typing import Any, Iterable, List
 
 
+import re
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.docstore.document import Document
+from typing import Any, Iterable, List
+
 class LawSplitter(RecursiveCharacterTextSplitter):
-    def __init__(self, **kwargs: Any):
+    def __init__(self, chunk_size: int = 256, chunk_overlap: int = 32, **kwargs: Any):
         separators = [
-            # 一级标题：一、二、...
             r'\n[一二三四五六七八九十]+、\s*',
-            
-            # 二级标题：（一）（二）...
             r'\n（[一二三四五六七八九十]+）\s*',
-            
-            # 三级标题：1. 2. ...
             r'\n\d+\.\s*',
-            
-            # 四级标题：（1）（2）...
-            #r'\n（\d+）\s*',
-            
-            # 五级标题：① ② ...
-            #r'\n[①②③④⑤⑥⑦⑧⑨⑩]+\s*',
-            
+            r'\n（\d+）\s*',
+            r'\n[①②③④⑤⑥⑦⑧⑨⑩]+\s*',
+            r'\n[●•○▪▫]\s*',
+            r'[。！？；]\s*',
+            r'\n',
+            r'\s{4,}',
         ]
         
         super().__init__(
             separators=separators,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             is_separator_regex=True,
             keep_separator=True,
             **kwargs
         )
         
+        # 更细粒度的层级映射
         self.level_mapping = {
             r'^[一二三四五六七八九十]+、': 'level1',
             r'^（[一二三四五六七八九十]+）': 'level2',
             r'^\d+\.': 'level3',
-            #r'^（\d+）': 'level4',
-            #r'^[①②③④⑤⑥⑦⑧⑨⑩]': 'level5',
+            r'^（\d+）': 'level4',
+            r'^[①②③④⑤⑥⑦⑧⑨⑩]': 'level5',
+            r'^[●•○▪▫]': 'bullet',
         }
 
     def split_text(self, text: str) -> List[str]:
         text = re.sub(r'\r\n', '\n', text)
         text = re.sub(r'[ \t]+', ' ', text)
-        
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
         chunks = super().split_text(text)
         
-        return self._postprocess_chunks(chunks)
-
-    def _postprocess_chunks(self, chunks: List[str]) -> List[str]:
         processed = []
-        buffer = ""
-        
         for chunk in chunks:
-            current_level = self._detect_level(chunk)
-            
-            if not buffer:
-                buffer = chunk
+            if len(chunk) > self.chunk_size * 1.5:
+                sentences = re.split(r'(?<=[。！？；])', chunk)
+                current_block = ""
+                for sentence in sentences:
+                    if len(current_block) + len(sentence) > self.chunk_size:
+                        if current_block:
+                            processed.append(current_block.strip())
+                            current_block = sentence
+                        else:
+                            processed.append(sentence.strip())
+                    else:
+                        current_block += sentence
+                if current_block:
+                    processed.append(current_block.strip())
             else:
-                if current_level:
-                    processed.append(buffer.strip())
-                    buffer = chunk
-                else:
-                    buffer += "\n" + chunk
-        
-        if buffer:
-            processed.append(buffer.strip())
-            
+                processed.append(chunk.strip())
+                
         return processed
 
     def split_documents(self, documents: Iterable[Document]) -> List[Document]:
@@ -78,15 +80,24 @@ class LawSplitter(RecursiveCharacterTextSplitter):
         for doc in documents:
             chunks = self.split_text(doc.page_content)
             for chunk in chunks:
+                # 跳过空块或过小的块
+                if not chunk.strip() or len(chunk.strip()) < 10:
+                    continue
+                    
                 texts.append(chunk)
                 new_metadata = doc.metadata.copy()
+                
+                # 检测并添加层级信息
                 level = self._detect_level(chunk)
                 if level:
                     new_metadata["level"] = level
-                    title = chunk.split('\n')[0].strip()
-                    new_metadata["title"] = title
+                    
+                    # 提取标题（第一行）
+                    title_line = chunk.split('\n')[0].strip()
+                    new_metadata["title"] = title_line
                 
                 metadatas.append(new_metadata)
+        
         return self.create_documents(texts, metadatas=metadatas)
 
     def _detect_level(self, text: str) -> str:

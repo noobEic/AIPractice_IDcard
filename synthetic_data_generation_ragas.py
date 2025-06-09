@@ -45,9 +45,9 @@ personas = [
 ]
 
 generator = TestsetGenerator(llm=generator_llm,embedding_model=generator_embeddings,persona_list=personas)
-dataset = generator.generate_with_langchain_docs(docs, testset_size=2000)
+dataset = generator.generate_with_langchain_docs(docs, testset_size=600)
 
 
 
-dataset.to_csv("synthetic_data_generation_ragas_3.csv")
+dataset.to_csv("train.csv")
 print("Synthetic data generation completed and saved to 'synthetic_data_generation_ragas_2.csv'.")

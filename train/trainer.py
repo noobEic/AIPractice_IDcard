@@ -7,12 +7,15 @@ import os
 from dataclasses import dataclass
 from common.utils import set_seed
 from peft import LoraConfig, get_peft_model, TaskType
+import numpy as np
+import math
 
 @dataclass
 class IDCardConfig:
     model_name_or_path: str
     tokenizer_name_or_path: str
     data_path: str
+    valid_path: str  # 新增验证集路径
     output_dir: str
     max_length: int
     batch_size: int
@@ -27,12 +30,13 @@ class IDCardConfig:
     accumulation_steps: int
     save_steps: int
     save_full_model: bool
-    
+    early_stop_patience: int
+    min_delta: float
+    eval_steps: int
 
 
 class IDCardDataset(Dataset):
-    def __init__(self, file_path,tokenizer, max_length=512):
-        
+    def __init__(self, file_path, tokenizer, max_length=512):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.data = self.load_data(file_path)
@@ -50,7 +54,6 @@ class IDCardDataset(Dataset):
                 })
         return data
         
-    
     def __len__(self):
         return len(self.data)
 
@@ -58,7 +61,6 @@ class IDCardDataset(Dataset):
         item = self.data[idx]
         question = item['question']
         answer = item['answer']
-        
         
         prompt = f"问题：{question} 答案："
         text = prompt + answer
@@ -82,7 +84,6 @@ class IDCardDataset(Dataset):
         prompt_length = prompt_tokens['input_ids'].shape[1]
         
         labels[:, :prompt_length] = -100
-
         labels[labels == self.tokenizer.pad_token_id] = -100
         
         return {
@@ -106,7 +107,7 @@ class IDCardTrainer:
         
         base_model = AutoModelForCausalLM.from_pretrained(
             config.model_name_or_path,
-            torch_dtype=torch.bfloat16 if config.fp16 else torch.float32
+            torch_dtype=torch.bfloat16 if config.fp16 else torch.float32,
             **kwargs
         )
 
@@ -131,6 +132,13 @@ class IDCardTrainer:
             shuffle=True
         )
 
+        self.valid_dataset = IDCardDataset(config.valid_path, self.tokenizer, config.max_length)
+        self.valid_dataloader = DataLoader(
+            self.valid_dataset,
+            batch_size=config.batch_size,
+            shuffle=False
+        )
+
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=config.learning_rate
@@ -142,19 +150,50 @@ class IDCardTrainer:
         )
 
         self.scaler = torch.amp.GradScaler(enabled=config.fp16)
+
+        self.best_valid_loss = float('inf')
+        self.epochs_no_improve = 0
+        self.early_stop = False
         
+    def evaluate(self):
+        self.model.eval()
+        total_loss = 0
+        total_steps = 0
+        
+        with torch.no_grad():
+            for batch in tqdm(self.valid_dataloader, desc="Validating"):
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                labels = batch['labels'].to(self.device)
+                
+                with torch.amp.autocast(enabled=self.config.fp16, device_type=self.device):
+                    outputs = self.model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        labels=labels
+                    )
+                    loss = outputs.loss
+                    
+                total_loss += loss.item()
+                total_steps += 1
+        
+        avg_loss = total_loss / total_steps
+        return avg_loss
+    
     def train(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
-        self.model.train()
-        
         global_step = 0
-
-        accumulation_steps = self.config.gradient_accumulation_steps if hasattr(self.config, 'gradient_accumulation_steps') else 1
+        accumulation_steps = self.config.accumulation_steps
         
         for epoch in range(self.config.num_train_epochs):
+            if self.early_stop:
+                print(f"Early stopping triggered at epoch {epoch}")
+                break
+                
             print(f"Epoch {epoch+1}/{self.config.num_train_epochs}")
-            
+            self.model.train()
             epoch_loss = 0
+            total_steps = 0
 
             progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}")
             
@@ -163,20 +202,17 @@ class IDCardTrainer:
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
                 
-                self.model.train()
-                
-                with torch.amp.autocast(enabled=self.config.fp16,device_type=self.device):
+                with torch.amp.autocast(enabled=self.config.fp16, device_type=self.device):
                     outputs = self.model(
                         input_ids=input_ids,
                         attention_mask=attention_mask,
                         labels=labels
                     )
                     loss = outputs.loss
+                    
                 if not loss.requires_grad:
-                    # 如果不需要梯度，打印警告并跳过
                     print(f"Warning: Loss does not require grad at step {global_step}")
                     continue
-                
                 
                 loss = loss / accumulation_steps
                 self.scaler.scale(loss).backward()
@@ -185,29 +221,62 @@ class IDCardTrainer:
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
                     self.optimizer.zero_grad()
-                    
                     self.lr_scheduler.step()
                 
                 epoch_loss += loss.item() * accumulation_steps
+                total_steps += 1
                 global_step += 1
 
                 progress_bar.set_postfix({
                     'loss': f"{loss.item() * accumulation_steps:.4f}", 
                     'lr': f"{self.lr_scheduler.get_last_lr()[0]:.8f}"
                 })
+            
+                if global_step % self.config.eval_steps == 0:
+                    valid_loss = self.evaluate()
+                    print(f"Step {global_step} - Validation Loss: {valid_loss:.4f}")
 
+                    if valid_loss < self.best_valid_loss - self.config.min_delta:
+                        self.best_valid_loss = valid_loss
+                        self.epochs_no_improve = 0
+                        self.save_model("best")
+                    else:
+                        self.epochs_no_improve += 1
+                        print(f"No improvement for {self.epochs_no_improve} evaluations")
+                    
+                    if self.epochs_no_improve >= self.config.early_stop_patience:
+                        self.early_stop = True
+                        print("Early stopping criteria met")
+                        break
+                    
+                    self.model.train()
 
-            avg_loss = epoch_loss / len(self.train_dataloader)
-            print(f"Epoch {epoch+1} Average Loss: {avg_loss:.4f}")
-            if (epoch+1) % 10 == 0:
-                self.save_model(epoch)
+            avg_epoch_loss = epoch_loss / total_steps
+            print(f"Epoch {epoch+1} Average Loss: {avg_epoch_loss:.4f}")
+            
+            valid_loss = self.evaluate()
+            print(f"Epoch {epoch+1} - Validation Loss: {valid_loss:.4f}")
+            
+            if valid_loss < self.best_valid_loss - self.config.min_delta:
+                self.best_valid_loss = valid_loss
+                self.epochs_no_improve = 0
+                self.save_model("best")
+            else:
+                self.epochs_no_improve += 1
+                print(f"No improvement for {self.epochs_no_improve} epochs")
+
+            if self.epochs_no_improve >= self.config.early_stop_patience:
+                self.early_stop = True
+                print("Early stopping criteria met")
+
+            if (epoch+1) % self.config.save_steps == 0:
+                self.save_model(f"epoch_{epoch+1}")
     
-    def save_model(self, epoch):
-        output_dir = os.path.join(self.config.output_dir, f"checkpoint_{epoch+1}")
+    def save_model(self, checkpoint_name):
+        output_dir = os.path.join(self.config.output_dir, f"checkpoint_{checkpoint_name}")
         os.makedirs(output_dir, exist_ok=True)
 
         self.model.save_pretrained(output_dir)
-
         self.tokenizer.save_pretrained(output_dir)
         
         if self.config.save_full_model:
