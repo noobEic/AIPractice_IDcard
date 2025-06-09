@@ -7,7 +7,7 @@ from langchain_community.vectorstores import FAISS
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
-def rag_answer(generator, vector_db, query: str, top_k: int = 5, max_length: int = 2048):
+def rag_answer(generator, vector_db, query: str, top_k: int = 5, max_new_tokens: int = 500):
     instruction = "为这个句子生成表示以用于检索相关文章:"
 
     results = vector_db.similarity_search(instruction + query, k=top_k)
@@ -16,11 +16,11 @@ def rag_answer(generator, vector_db, query: str, top_k: int = 5, max_length: int
 
     context = "\n\n".join(retrieved_docs)
     prompt = f"""
-    基于以下上下文回答问题：{context} 问题：{query} 答案："""
+    基于以下上下文回答问题：{context} 问题：{query}，请用简洁的话语回答，不要分段。"""
     
     response = generator(
         prompt,
-        max_length=max_length,
+        max_new_tokens=max_new_tokens,
         truncation=True,
         do_sample=True,
         temperature=0.7
@@ -55,6 +55,6 @@ if __name__ == '__main__':
     generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
     
     query = "如何办理身份证？"
-    answer = rag_answer(generator, vector_db, query, top_k=5, max_length=2048)
+    answer = rag_answer(generator, vector_db, query, top_k=5, max_new_tokens=2048)
     print(answer)
     
