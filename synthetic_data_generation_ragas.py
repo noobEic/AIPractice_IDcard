@@ -45,7 +45,14 @@ personas = [
 ]
 
 generator = TestsetGenerator(llm=generator_llm,embedding_model=generator_embeddings,persona_list=personas)
-dataset = generator.generate_with_langchain_docs(docs, testset_size=600)
+dataset = generator.generate_with_langchain_docs(docs, 
+                                                 testset_size=60,
+                                                 query_distribution={
+                                                         "基础咨询者": 0.6,
+                                                         "流程咨询者": 0.2,
+                                                       "政策核实者": 0.2
+                                                 }
+                                                 )
 
 
 

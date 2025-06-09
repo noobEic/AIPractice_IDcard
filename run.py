@@ -35,8 +35,7 @@ class InferenceRequest(BaseModel):
 def init_resources(args):
     """初始化模型和向量数据库"""
     print("⚙️ 正在加载资源...")
-    
-    # 加载生成模型
+
     kwargs = {"max_memory": {i: "24GiB" for i in range(4)}, "device_map": "auto"}
     model = AutoModelForCausalLM.from_pretrained(
         args.rag_model_name,
