@@ -5,8 +5,8 @@ from tqdm import tqdm
 import pandas as pd
 from api import API_KEY, BASE_URL
 import csv
-from transformers import from_pretrained
 import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 def process_response(response):
     tag_position = response.find('</think>')
@@ -53,7 +53,8 @@ if __name__ == "__main__":
     
     ### SFT setting ###
     parser.add_argument("--sft_model_path", type=str, default="./output/checkpoint-201")
-    
+    parser.add_argument("--sft_max_length", type=int, default=500)
+    parser.add_argument("--sft_temperature", type=float, default=0.7)
     ### RAG ###
     parser.add_argument("--rag_model_name", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct")
     parser.add_argument('--embedding_model_name', type=str, default='BAAI/bge-large-zh')
