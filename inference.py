@@ -54,14 +54,14 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cuda')
     
     ### Zero-shot setting ###
-    parser.add_argument("--zero_shot_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct")
+    parser.add_argument("--zero_shot_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct")
     
     ### SFT setting ###
-    parser.add_argument("--sft_model_path", type=str, default="./output/checkpoint-201")
+    parser.add_argument("--sft_model_path", type=str, default="./output/Qwen2.5-7B-Instruct/checkpoint-50")
     parser.add_argument("--sft_max_length", type=int, default=500)
     parser.add_argument("--sft_temperature", type=float, default=0.7)
     ### RAG ###
-    parser.add_argument("--rag_model_name", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct")
+    parser.add_argument("--rag_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct")
     parser.add_argument('--embedding_model_name', type=str, default='BAAI/bge-large-zh')
     parser.add_argument('--vector_db_dir', type=str, default='./test_vector_db')
     
@@ -171,11 +171,41 @@ if __name__ == "__main__":
             "max_memory": {i: "24GiB" for i in range(4)},
             "device_map": "auto",
         }
-        model = AutoModelForCausalLM.from_pretrained(args.rag_model_name,
+        model = AutoModelForCausalLM.from_pretrained(args.rag_model_path,
                                                      torch_dtype='float16',
                                                      **kwargs,
                                                      attn_implementation="flash_attention_2")
-        tokenizer = AutoTokenizer.from_pretrained(args.rag_model_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.rag_model_path)
+        
+        embedder = HuggingFaceEmbeddings(
+            model_name=args.embedding_model_name,
+            model_kwargs={'device': device},
+            encode_kwargs={'normalize_embeddings': True}
+        )
+        
+        vector_db = FAISS.load_local(args.vector_db_dir, embedder, allow_dangerous_deserialization=True)
+         
+        for question in tqdm(questions):
+            answer = rag_answer(model, tokenizer, vector_db, question, top_k=3, max_length=2048)
+            print(answer)
+            results.append((question, answer))
+            
+    if args.setting == "RAG-SFT":
+        from rag import rag_answer
+        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_community.vectorstores import FAISS
+        
+        device = args.device
+        kwargs = {
+            "max_memory": {i: "24GiB" for i in range(4)},
+            "device_map": "auto",
+        }
+        model = AutoModelForCausalLM.from_pretrained(args.sft_model_path,
+                                                     torch_dtype='float16',
+                                                     **kwargs,
+                                                     attn_implementation="flash_attention_2")
+        tokenizer = AutoTokenizer.from_pretrained(args.sft_model_path)
         
         embedder = HuggingFaceEmbeddings(
             model_name=args.embedding_model_name,
@@ -188,7 +218,7 @@ if __name__ == "__main__":
         generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         
         for question in tqdm(questions):
-            answer = rag_answer(generator, vector_db, question, top_k=3, max_new_tokens=500)
+            answer = rag_answer(model, tokenizer, vector_db, question, top_k=3, max_length=2048)
             print(answer)
             results.append((question, answer))
     

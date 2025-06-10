@@ -71,7 +71,7 @@ def classify_error(q, ref, pred):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="评估问答系统性能")
     parser.add_argument("--qa_data", type=str, default="synthetic_data_generation_ragas_2.csv")
-    parser.add_argument("--result", type=str, default="results/result_zero_shot.csv")
+    parser.add_argument("--result", type=str, default="results/result_RAG-SFT.csv")
     parser.add_argument("--output_report", type=str, default="evaluation_report.html")
     
     args = parser.parse_args()
