@@ -14,7 +14,6 @@ import torch
 
 app = FastAPI()
 
-# 允许跨域请求
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局资源
 global_resources = {
     "model": None,
     "tokenizer": None,

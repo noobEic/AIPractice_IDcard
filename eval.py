@@ -9,17 +9,13 @@ from sentence_transformers import SentenceTransformer, util
 import jieba
 from fuzzywuzzy import fuzz
 def calculate_semantic_similarity(references, predictions):
-    """计算语义相似度"""
     model = SentenceTransformer('BAAI/bge-large-zh-v1.5')
-    
-    # 编码所有句子
+
     ref_embeddings = model.encode(references, convert_to_tensor=True)
     pred_embeddings = model.encode(predictions, convert_to_tensor=True)
-    
-    # 计算余弦相似度
+
     cosine_scores = util.pytorch_cos_sim(pred_embeddings, ref_embeddings)
-    
-    # 获取每个预测与对应参考的相似度
+
     return np.diag(cosine_scores.cpu().numpy())
 
 def calculate_metrics(references, predictions):
@@ -70,8 +66,7 @@ def classify_error(q, ref, pred):
         return "不相关"
     
     return "错误"
-    
-    return error_counts, error_types
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="评估问答系统性能")
