@@ -14,29 +14,34 @@ def process_response(response):
         return response[tag_position + len('</think>'):].strip()
     return response
 
-def sft_generate_answer(model, tokenizer, question, max_length=500, temperature=0.7):
-    prompt = f"你是一个身份证办理的专家助手，请用简洁的话语回答以下问题，不要分段或换行。你的答案不应包含多余的信息，包括你的思考过程。\n\n问题：{question}"
+def generate_answer(model, tokenizer, question, max_length=500, temperature=0.7):
+    messages = [
+        {"role": "system", "content": "你是一个身份证办理的专家助手。我将严格遵守以下回答规则：1. 只提供最终答案，不添加解释或思考过程。2. 回答简洁明了，直接回应用户问题。3. 不使用列表、分段或换行。4. 不提出反问或新问题。5. 保持专业、客观。"},
+        {"role": "user", "content": question}
+    ]
 
-    inputs = tokenizer(
-        prompt,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=512
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_tensors="pt"
     ).to(model.device)
     
+    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+    eos_token_id = tokenizer.eos_token_id
+
     outputs = model.generate(
-        **inputs,
+        inputs,
         max_new_tokens=max_length,
         do_sample=True,
         temperature=temperature,
-        pad_token_id=tokenizer.eos_token_id,
-        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=eos_token_id,
+        eos_token_id=[im_end_id, eos_token_id],
         repetition_penalty=1.1
     )
 
-    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    generated_text = full_text[len(prompt):].strip()
+    response_ids = outputs[0, inputs.shape[1]:]
+    generated_text = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
     
     return process_response(generated_text)
 
@@ -49,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cuda')
     
     ### Zero-shot setting ###
-    parser.add_argument("--zero_shot_model", type=str, default="deepseek-r1")
+    parser.add_argument("--zero_shot_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct")
     
     ### SFT setting ###
     parser.add_argument("--sft_model_path", type=str, default="./output/checkpoint-201")
@@ -77,22 +82,48 @@ if __name__ == "__main__":
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if args.setting == "zero_shot":
-        zero_shot_model = args.zero_shot_model
-        client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-        for i in tqdm(range(len(questions))):
-            question = questions[i]
-            response = client.chat.completions.create(
-                model=zero_shot_model,
-                messages=[
-                    {"role": "system", "content": "你是一个身份证办理的专家助手，回答问题时要准确、简洁。"},
-                    {"role": "user", "content": prompt + "问题：" + question}
-                ],
-                stream=False
-            )
-            print(response.choices[0].message.content)
-            response = process_response(response.choices[0].message.content)
-            results.append((question, response))
+        # zero_shot_model = args.zero_shot_model
+        # client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+        # for i in tqdm(range(len(questions))):
+        #     question = questions[i]
+        #     response = client.chat.completions.create(
+        #         model=zero_shot_model,
+        #         messages=[
+        #             {"role": "system", "content": "你是一个身份证办理的专家助手，回答问题时要准确、简洁。"},
+        #             {"role": "user", "content": prompt + "问题：" + question}
+        #         ],
+        #         stream=False
+        #     )
+        #     print(response.choices[0].message.content)
+        #     response = process_response(response.choices[0].message.content)
+        #     results.append((question, response))
+        print(f"加载模型: {args.zero_shot_model_path}")
 
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.zero_shot_model_path,
+            trust_remote_code=True
+        )
+        
+        model = AutoModelForCausalLM.from_pretrained(
+            args.zero_shot_model_path,   
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            attn_implementation="flash_attention_2"
+        )
+        model.eval()
+
+        for question in tqdm(questions, desc="zero-shot"):
+            with torch.no_grad():
+                answer = generate_answer(
+                    model, 
+                    tokenizer, 
+                    question,
+                    max_length=args.sft_max_length,
+                    temperature=args.sft_temperature
+                )
+            results.append((question, answer))
+            print(f"\n问题: {question}\n答案: {answer}\n{'-'*50}")
+            
     if args.setting == "SFT":
         
         print(f"加载微调模型: {args.sft_model_path}")
@@ -118,7 +149,7 @@ if __name__ == "__main__":
 
         for question in tqdm(questions, desc="SFT"):
             with torch.no_grad():
-                answer = sft_generate_answer(
+                answer = generate_answer(
                     model, 
                     tokenizer, 
                     question,
