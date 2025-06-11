@@ -12,7 +12,7 @@ from langchain_core.documents import Document
 from langchain_core.pydantic_v1 import BaseModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.embeddings import Embeddings
-from prompt import ( # 假设你的 Prompt 定义文件名为 prompts.py
+from prompt import (
     SIMPLEQA_PREFIX, SIMPLEQA_SUFFIX,
     COMPLEXQA_PREFIX, COMPLEXQA_SUFFIX,
     FACTCHECK_PREFIX, FACTCHECK_SUFFIX

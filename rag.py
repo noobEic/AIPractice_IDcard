@@ -6,14 +6,34 @@ from langchain_community.vectorstores import FAISS
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+def rerank_docs(reranker, query: str, retrieved_docs: list, top_k_rerank: int = 3):
+    pairs = [[query, doc.page_content] for doc in retrieved_docs]
+    scores = reranker.compute_scores(pairs)
+    if isinstance(rerank_scores, float):
+        rerank_scores = [rerank_scores]
+    else:
+        rerank_scores = list(rerank_scores)
+    
+    scored_docs = list(zip(retrieved_docs, rerank_scores))
+    scored_docs.sort(key=lambda x: x[1], reverse=True)
+    top_docs = scored_docs[:top_k_rerank]
 
-def rag_answer(model, tokenizer, vector_db, query: str, top_k: int = 5, max_length: int = 2048, temperature=0.7):
+    return [doc for doc, _ in top_docs]
+    
+    
+    
+    
+def rag_answer(model, tokenizer, vector_db, query: str, top_k: int = 10, max_length: int = 2048, temperature=0.7 , reranker=None, top_k_rerank=3):
     instruction = "为这个句子生成表示以用于检索相关文章:"
 
     results = vector_db.similarity_search(instruction + query, k=top_k)
-    retrieved_docs = [doc.page_content for doc in results]
-
-
+    
+    if reranker:
+        reranked_results = rerank_docs(reranker, query, results, top_k=top_k_rerank)
+        retrieved_docs = [doc.page_content for doc in reranked_results]
+    else:
+        retrieved_docs = [doc.page_content for doc in results]
+        
     context = "\n\n".join(retrieved_docs)
     prompt = f"""
     基于以下上下文回答问题：{context} 问题：{query}，请用简洁的话语回答，不要分段。"""

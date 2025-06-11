@@ -7,6 +7,7 @@ from api import API_KEY, BASE_URL
 import csv
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 def process_response(response):
     tag_position = response.find('</think>')
@@ -63,6 +64,7 @@ if __name__ == "__main__":
     ### RAG ###
     parser.add_argument("--rag_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct")
     parser.add_argument('--embedding_model_name', type=str, default='BAAI/bge-large-zh')
+    parser.add_argument('--reranker_model_name', type=str, default='BAAI/bge-reranker-large')
     parser.add_argument('--vector_db_dir', type=str, default='./test_vector_db')
     
     
@@ -82,21 +84,6 @@ if __name__ == "__main__":
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if args.setting == "zero_shot":
-        # zero_shot_model = args.zero_shot_model
-        # client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-        # for i in tqdm(range(len(questions))):
-        #     question = questions[i]
-        #     response = client.chat.completions.create(
-        #         model=zero_shot_model,
-        #         messages=[
-        #             {"role": "system", "content": "你是一个身份证办理的专家助手，回答问题时要准确、简洁。"},
-        #             {"role": "user", "content": prompt + "问题：" + question}
-        #         ],
-        #         stream=False
-        #     )
-        #     print(response.choices[0].message.content)
-        #     response = process_response(response.choices[0].message.content)
-        #     results.append((question, response))
         print(f"加载模型: {args.zero_shot_model_path}")
 
         tokenizer = AutoTokenizer.from_pretrained(
@@ -162,9 +149,10 @@ if __name__ == "__main__":
     
     if args.setting == "RAG":
         from rag import rag_answer
-        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-        from langchain_huggingface import HuggingFaceEmbeddings
+        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, AutoModelForSequenceClassification
+        from langchain.embeddings import HuggingFaceBgeEmbeddings
         from langchain_community.vectorstores import FAISS
+        from FlagEmbedding import FlagReranker
         
         device = args.device
         kwargs = {
@@ -177,16 +165,18 @@ if __name__ == "__main__":
                                                      attn_implementation="flash_attention_2")
         tokenizer = AutoTokenizer.from_pretrained(args.rag_model_path)
         
-        embedder = HuggingFaceEmbeddings(
+        embedder = HuggingFaceBgeEmbeddings(
             model_name=args.embedding_model_name,
             model_kwargs={'device': device},
             encode_kwargs={'normalize_embeddings': True}
         )
         
+        reranker = FlagReranker(args.reranker_model_name, device)
+        
         vector_db = FAISS.load_local(args.vector_db_dir, embedder, allow_dangerous_deserialization=True)
          
         for question in tqdm(questions):
-            answer = rag_answer(model, tokenizer, vector_db, question, top_k=3, max_length=2048)
+            answer = rag_answer(model, tokenizer, vector_db, question, top_k=10, max_length=2048, reranker=reranker, top_k_rerank=3)
             print(answer)
             results.append((question, answer))
             
@@ -195,7 +185,7 @@ if __name__ == "__main__":
         from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
         from langchain_huggingface import HuggingFaceEmbeddings
         from langchain_community.vectorstores import FAISS
-        
+        from FlagEmbedding import FlagReranker
         device = args.device
         kwargs = {
             "max_memory": {i: "24GiB" for i in range(4)},
@@ -213,18 +203,20 @@ if __name__ == "__main__":
             encode_kwargs={'normalize_embeddings': True}
         )
         
+        reranker = FlagReranker(args.reranker_model_name, device)
+        
         vector_db = FAISS.load_local(args.vector_db_dir, embedder, allow_dangerous_deserialization=True)
         
         generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         
         for question in tqdm(questions):
-            answer = rag_answer(model, tokenizer, vector_db, question, top_k=3, max_length=2048)
+            answer = rag_answer(model, tokenizer, vector_db, question, top_k=10, max_length=2048, reranker=reranker, top_k_rerank=3)
             print(answer)
             results.append((question, answer))
     
     
     
-    with open(f"{output_dir}/result_{args.setting}.csv", "w") as f:
+    with open(f"{output_dir}/result_Qwen2.5-7B-Instruct_{args.setting}.csv", "w") as f:
         writer = csv.writer(f)
         for item in results:
             writer.writerow((item[0], item[1]))    
