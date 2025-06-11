@@ -81,7 +81,7 @@ class IDCardDataset(Dataset):
         )
         prompt_length = prompt_tokens['input_ids'].shape[1]
         
-        labels[:, :prompt_length] = -100
+        labels[:, :prompt_length] = -100 
 
         labels[labels == self.tokenizer.pad_token_id] = -100
         
@@ -199,7 +199,7 @@ class IDCardTrainer:
 
             avg_loss = epoch_loss / len(self.train_dataloader)
             print(f"Epoch {epoch+1} Average Loss: {avg_loss:.4f}")
-            if (epoch+1) % 10 == 0:
+            if (epoch+1) % 5 == 0:
                 self.save_model(epoch)
     
     def save_model(self, epoch):

@@ -71,12 +71,10 @@ def generate_stream(question: str, max_length: int = 500, top_k: int = 3):
     if not all(global_resources.values()):
         yield {"error": "模型未初始化"}
         return
-    
-    # 1. 检索相关文档
+
     retriever = global_resources["vector_db"].as_retriever(search_kwargs={"k": top_k})
     docs = retriever.get_relevant_documents(question)
-    
-    # 2. 构建提示词
+
     context = "\n".join([doc.page_content for doc in docs])
     prompt = f"""
     <system>
@@ -86,8 +84,7 @@ def generate_stream(question: str, max_length: int = 500, top_k: int = 3):
     <user>{question}</user>
     <assistant>
     """
-    
-    # 3. 准备流式生成
+
     inputs = global_resources["tokenizer"](
         prompt, 
         return_tensors="pt"

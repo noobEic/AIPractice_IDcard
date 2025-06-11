@@ -3,7 +3,7 @@ from common.utils import set_seed
 import torch
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 if __name__ == '__main__':
     train_config = IDCardConfig(
@@ -14,9 +14,9 @@ if __name__ == '__main__':
         max_length=512, 
         batch_size=1,
         learning_rate=2e-5,
-        num_train_epochs=50,
+        num_train_epochs=5,
         seed=42,
-        device='cuda' if torch.cuda.is_available() else 'cpu',
+        device='cuda:1' if torch.cuda.is_available() else 'cpu',
         lora_r=8,
         lora_alpha=16,
         lora_dropout=0.1,

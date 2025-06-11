@@ -8,6 +8,8 @@ import csv
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 def process_response(response):
     tag_position = response.find('</think>')
@@ -21,18 +23,24 @@ def generate_answer(model, tokenizer, question, max_length=500, temperature=0.7)
         {"role": "user", "content": question}
     ]
 
-    inputs = tokenizer.apply_chat_template(
+    chat_prompt = tokenizer.apply_chat_template(
         messages,
-        tokenize=True,
-        add_generation_prompt=True,
-        return_tensors="pt"
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    
+    inputs = tokenizer(
+        chat_prompt,
+        return_tensors="pt",
+        return_attention_mask=True
     ).to(model.device)
     
     im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
     eos_token_id = tokenizer.eos_token_id
 
     outputs = model.generate(
-        inputs,
+        input_ids=inputs.input_ids,
+        attention_mask=inputs.attention_mask,
         max_new_tokens=max_length,
         do_sample=True,
         temperature=temperature,
@@ -41,7 +49,7 @@ def generate_answer(model, tokenizer, question, max_length=500, temperature=0.7)
         repetition_penalty=1.1
     )
 
-    response_ids = outputs[0, inputs.shape[1]:]
+    response_ids = outputs[0, inputs.input_ids.shape[1]:]
     generated_text = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
     
     return process_response(generated_text)
@@ -58,7 +66,7 @@ if __name__ == "__main__":
     parser.add_argument("--zero_shot_model_path", type=str, default="/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct")
     
     ### SFT setting ###
-    parser.add_argument("--sft_model_path", type=str, default="./output/Qwen2.5-7B-Instruct/checkpoint-50")
+    parser.add_argument("--sft_model_path", type=str, default="./output/Qwen2.5-7B-Instruct/checkpoint-5")
     parser.add_argument("--sft_max_length", type=int, default=500)
     parser.add_argument("--sft_temperature", type=float, default=0.7)
     ### RAG ###
@@ -150,7 +158,7 @@ if __name__ == "__main__":
     if args.setting == "RAG":
         from rag import rag_answer
         from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, AutoModelForSequenceClassification
-        from langchain.embeddings import HuggingFaceBgeEmbeddings
+        from langchain_community.embeddings import HuggingFaceBgeEmbeddings
         from langchain_community.vectorstores import FAISS
         from FlagEmbedding import FlagReranker
         
@@ -171,7 +179,9 @@ if __name__ == "__main__":
             encode_kwargs={'normalize_embeddings': True}
         )
         
-        reranker = FlagReranker(args.reranker_model_name, device)
+        reranker = FlagReranker(args.reranker_model_name, use_fp16=True)
+        
+        #reranker = None
         
         vector_db = FAISS.load_local(args.vector_db_dir, embedder, allow_dangerous_deserialization=True)
          
@@ -183,7 +193,7 @@ if __name__ == "__main__":
     if args.setting == "RAG-SFT":
         from rag import rag_answer
         from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_community.embeddings import HuggingFaceBgeEmbeddings
         from langchain_community.vectorstores import FAISS
         from FlagEmbedding import FlagReranker
         device = args.device
@@ -197,13 +207,15 @@ if __name__ == "__main__":
                                                      attn_implementation="flash_attention_2")
         tokenizer = AutoTokenizer.from_pretrained(args.sft_model_path)
         
-        embedder = HuggingFaceEmbeddings(
+        embedder = HuggingFaceBgeEmbeddings(
             model_name=args.embedding_model_name,
             model_kwargs={'device': device},
             encode_kwargs={'normalize_embeddings': True}
         )
         
-        reranker = FlagReranker(args.reranker_model_name, device)
+        reranker = FlagReranker(args.reranker_model_name, use_fp16=True)
+        
+        #reranker = None
         
         vector_db = FAISS.load_local(args.vector_db_dir, embedder, allow_dangerous_deserialization=True)
         

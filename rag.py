@@ -8,7 +8,7 @@ from langchain_community.vectorstores import FAISS
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 def rerank_docs(reranker, query: str, retrieved_docs: list, top_k_rerank: int = 3):
     pairs = [[query, doc.page_content] for doc in retrieved_docs]
-    scores = reranker.compute_scores(pairs)
+    rerank_scores = reranker.compute_score(pairs)
     if isinstance(rerank_scores, float):
         rerank_scores = [rerank_scores]
     else:
@@ -29,7 +29,7 @@ def rag_answer(model, tokenizer, vector_db, query: str, top_k: int = 10, max_len
     results = vector_db.similarity_search(instruction + query, k=top_k)
     
     if reranker:
-        reranked_results = rerank_docs(reranker, query, results, top_k=top_k_rerank)
+        reranked_results = rerank_docs(reranker, query, results, top_k_rerank=top_k_rerank)
         retrieved_docs = [doc.page_content for doc in reranked_results]
     else:
         retrieved_docs = [doc.page_content for doc in results]
@@ -41,18 +41,26 @@ def rag_answer(model, tokenizer, vector_db, query: str, top_k: int = 10, max_len
         {"role": "system", "content": "你是一个身份证办理的专家助手。我将严格遵守以下回答规则：1. 只提供最终答案，不添加解释或思考过程。2. 回答简洁明了，直接回应用户问题。3. 不使用列表、分段或换行。4. 不提出反问或新问题。5. 保持专业、客观。"},
         {"role": "user", "content": prompt} 
     ]
-    inputs = tokenizer.apply_chat_template(
+    
+    prompt = tokenizer.apply_chat_template(
         messages,
-        tokenize=True,
-        add_generation_prompt=True,
-        return_tensors="pt"
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    
+    inputs = tokenizer(
+        prompt,
+        return_tensors="pt",
+        return_attention_mask=True,
+        padding=True
     ).to(model.device)
     
     im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
     eos_token_id = tokenizer.eos_token_id
 
     outputs = model.generate(
-        inputs,
+        input_ids=inputs.input_ids,
+        attention_mask=inputs.attention_mask,
         max_new_tokens=max_length,
         do_sample=True,
         temperature=temperature,
@@ -61,7 +69,7 @@ def rag_answer(model, tokenizer, vector_db, query: str, top_k: int = 10, max_len
         repetition_penalty=1.1
     )
 
-    response_ids = outputs[0, inputs.shape[1]:]
+    response_ids = outputs[0, inputs.input_ids.shape[1]:]
     generated_text = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
     
     return generated_text
