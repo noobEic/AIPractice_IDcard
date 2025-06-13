@@ -228,7 +228,7 @@ if __name__ == "__main__":
     
     
     
-    with open(f"{output_dir}/result_Qwen2.5-7B-Instruct_{args.setting}.csv", "w") as f:
+    with open(f"{output_dir}/result2_Qwen2.5-7B-Instruct_{args.setting}.csv", "w") as f:
         writer = csv.writer(f)
         for item in results:
             writer.writerow((item[0], item[1]))    

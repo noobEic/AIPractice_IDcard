@@ -7,10 +7,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 if __name__ == '__main__':
     train_config = IDCardConfig(
-        model_name_or_path='/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct',
-        tokenizer_name_or_path='/home/zxyu/private_data/pretrain/Qwen2.5-7B-Instruct',
+        model_name_or_path='/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct',
+        tokenizer_name_or_path='/home/zxyu/private_data/pretrain/Qwen2.5-3B-Instruct',
         data_path='./synthetic_data_generation_ragas_2.csv',
-        output_dir='./output/Qwen2.5-7B-Instruct',
+        output_dir='./output/Qwen2.5-3B-Instruct',
         max_length=512, 
         batch_size=1,
         learning_rate=2e-5,
